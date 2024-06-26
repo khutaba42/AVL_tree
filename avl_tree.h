@@ -370,6 +370,182 @@ namespace avl
     return 1 + _get_tree_size_rec(node->__left) + _get_tree_size_rec(node->__right);
   }
 
+
+  /*
+   *
+   *          A      |        B
+   *        /   \    |      /   \
+   *       B    Ar   |    Bl     A
+   *     /   \       |         /   \
+   *    Bl   Br      |        Br   Ar
+   *
+   */
+  template <typename Data_t, typename less>
+  void tree<Data_t, less>::_rotate_right(typename tree<Data_t, less>::_Node **node)
+  {
+    if (!node || !(*node) || !(*node)->__left)
+    {
+      // if node doesn't have a left child (nothing to right rotate)
+      return;
+    }
+
+    // save some pointers
+    _Node *A_ptr = (*node);
+    _Node *B_ptr = A_ptr->__left;
+    _Node *Br_ptr = B_ptr->__right;
+
+    // change the children
+    (*node) = B_ptr;        // we lost A, good thing we have A_ptr
+    B_ptr->__right = A_ptr; // we lost Br, good thing we have Br_ptr
+    A_ptr->__left = Br_ptr; // A's left pointed to B, we change that into Br
+
+    // change the parents
+    B_ptr->__parent = A_ptr->__parent; // the only way to retrieve original A's parent
+    B_ptr->__right->__parent = B_ptr;
+    if (Br_ptr)
+      Br_ptr->__parent = A_ptr;
+
+    // update the heights (of the sub tree of the node)
+    // Bl Br Ar didn't have their heights change
+    A_ptr->__height = _get_tree_height_from_children(*A_ptr);
+    B_ptr->__height = _get_tree_height_from_children(*B_ptr);
+
+    // if the rotating node is the root, change the tree root accordingly
+    // B may be the root now (already switched parents with A)
+    if (B_ptr->__parent == nullptr)
+      this->__root = B_ptr;
+
+    // if other data should be update, update them here
+
+    return;
+  }
+
+  /*
+   *
+   *        A        |        B
+   *      /   \      |      /   \
+   *    Al     B     |     A     Br
+   *         /   \   |   /   \
+   *        Bl   Br  |  Al   Bl
+   *
+   */
+  template <typename Data_t, typename less>
+  void tree<Data_t, less>::_rotate_left(typename tree<Data_t, less>::_Node **node)
+  {
+    if (node == nullptr || *node == nullptr || (*node)->__right == nullptr)
+    {
+      // if node doesn't have a right child (nothing to right rotate)
+      return;
+    }
+
+    // save some pointers
+    _Node *A_ptr = (*node);
+    _Node *B_ptr = A_ptr->__right;
+    _Node *Bl_ptr = B_ptr->__left;
+
+    // change the children
+    (*node) = B_ptr;         // in this line we lost A, good thing we have A_ptr
+    B_ptr->__left = A_ptr;   // in this line we lost Bl, good thing we have Bl_ptr
+    A_ptr->__right = Bl_ptr; // A's right pointed to B, we change that into Bl
+
+    // change the parents
+    B_ptr->__parent = A_ptr->__parent; // the only way to retrieve original A's parent
+    A_ptr->__parent = B_ptr;
+    if (Bl_ptr)
+      Bl_ptr->__parent = A_ptr;
+
+    // update the heights (of the sub tree of the node)
+    // Bl Br Al didn't have their heights change
+    A_ptr->__height = _get_tree_height_from_children(*A_ptr);
+    B_ptr->__height = _get_tree_height_from_children(*B_ptr);
+
+    // if the rotating node is the root, change the tree root accordingly
+    // B may be the root now (already switched parents with A)
+    if (B_ptr->__parent == nullptr)
+      this->__root = B_ptr;
+
+    // if other data should be update, update them here
+
+    return;
+  }
+
+  template <typename Data_t, typename less>
+  void tree<Data_t, less>::_rotate_LL(typename tree<Data_t, less>::_Node **node)
+  {
+    if (node == nullptr || *node == nullptr)
+    {
+      return;
+    }
+
+    if ((*node)->__left == nullptr)
+    {
+      return;
+    }
+
+    // counter intuitive, but thats how it works
+    _rotate_right(node);
+
+    return;
+  }
+
+  template <typename Data_t, typename less>
+  void tree<Data_t, less>::_rotate_LR(typename tree<Data_t, less>::_Node **node_pptr)
+  {
+    if (node_pptr == nullptr || *node_pptr == nullptr)
+    {
+      return;
+    }
+
+    if ((*node_pptr)->__left == nullptr)
+    {
+      return;
+    }
+
+    // the order of rotation in important
+    _rotate_left(&((*node_pptr)->__left));
+    _rotate_right(node_pptr);
+
+    return;
+  }
+
+  template <typename Data_t, typename less>
+  void tree<Data_t, less>::_rotate_RL(typename tree<Data_t, less>::_Node **node_pptr)
+  {
+    if (node_pptr == nullptr || *node_pptr == nullptr)
+    {
+      return;
+    }
+
+    if ((*node_pptr)->__right == nullptr)
+    {
+      return;
+    }
+
+    // the order of rotation in important
+    _rotate_right(&((*node_pptr)->__right));
+    _rotate_left(node_pptr);
+
+    return;
+  }
+
+  template <typename Data_t, typename less>
+  void tree<Data_t, less>::_rotate_RR(typename tree<Data_t, less>::_Node **node)
+  {
+    if (node == nullptr || *node == nullptr)
+    {
+      return;
+    }
+
+    if ((*node)->__right == nullptr)
+    {
+      return;
+    }
+
+    // counter intuitive, but thats how it works
+    _rotate_left(node);
+
+    return;
+  }
 }; // namespace avl
 
 #endif // __AVL_TREE_H__
