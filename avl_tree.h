@@ -206,6 +206,170 @@ namespace avl
 #endif // AVL_TREE_TEST
   };
 
+  template <typename Data_t, typename less>
+  tree<Data_t, less>::tree()
+      : __root(nullptr),
+        __min_element(nullptr),
+        __max_element(nullptr),
+        __size(0)
+  {
+  }
+
+  template <typename Data_t, typename less>
+  size_t tree<Data_t, less>::size() const
+  {
+    return __size;
+  }
+
+  template <typename Data_t, typename less>
+  bool tree<Data_t, less>::empty() const
+  {
+#ifdef AVL_TREE_TEST
+    bool empty = __root == nullptr;
+    if (empty)
+    {
+      assert(__size == 0);
+    }
+    else
+    {
+      assert(__size != 0);
+    }
+#endif
+    return __root == nullptr;
+  }
+
+  template <typename Data_t, typename less>
+  std::pair<const typename tree<Data_t, less>::_Node *, const typename tree<Data_t, less>::_Node *const *> tree<Data_t, less>::_search_place_aux(const Data_t &data) const
+  {
+    const _Node *parent_ptr = nullptr;
+    const _Node *const *curr_pptr = &__root;
+    while (*curr_pptr)
+    {
+      // update the node
+      if (less()(data, (*curr_pptr)->__data))
+      {
+        // go left, data < current data
+        parent_ptr = *curr_pptr;
+        curr_pptr = &((*curr_pptr)->__left);
+      }
+      else if (less()((*curr_pptr)->__data, data))
+      {
+        // go right, current data < data
+        parent_ptr = *curr_pptr;
+        curr_pptr = &((*curr_pptr)->__right);
+      }
+      else
+      {
+        // data is in node, so the parent is the node and
+        // curr is a pointer to that pointer
+        break;
+      }
+    }
+    return {parent_ptr, curr_pptr};
+  }
+
+  template <typename Data_t, typename less>
+  std::pair<typename tree<Data_t, less>::_Node *, typename tree<Data_t, less>::_Node **> tree<Data_t, less>::_search_place_aux(const Data_t &data)
+  {
+    _Node *parent_ptr = nullptr;
+    _Node **curr_pptr = &__root;
+    while (*curr_pptr)
+    {
+      // update the node
+      if (less()(data, (*curr_pptr)->__data))
+      {
+        // go left, data < current data
+        parent_ptr = *curr_pptr;
+        curr_pptr = &((*curr_pptr)->__left);
+      }
+      else if (less()((*curr_pptr)->__data, data))
+      {
+        // go right, current data < data
+        parent_ptr = *curr_pptr;
+        curr_pptr = &((*curr_pptr)->__right);
+      }
+      else
+      {
+        // data is in node, so the parent is the node and
+        // curr is a pointer to that pointer
+        break;
+      }
+    }
+    return {parent_ptr, curr_pptr};
+  }
+
+  template <typename Data_t, typename less>
+  const typename tree<Data_t, less>::_Node *tree<Data_t, less>::_search_aux(const Data_t &data) const
+  {
+    _Node *ptr = *(_search_place_aux(data).second);
+    if (ptr == nullptr)
+    {
+      throw data_not_found;
+    }
+    return ptr->__data;
+  }
+
+  template <typename Data_t, typename less>
+  typename tree<Data_t, less>::_Node *tree<Data_t, less>::_search_aux(const Data_t &data)
+  {
+    _Node *ptr = *(_search_place_aux(data).second);
+    if (ptr == nullptr)
+    {
+      throw data_not_found;
+    }
+    return ptr->__data;
+  }
+
+  template <typename Data_t, typename less>
+  size_t tree<Data_t, less>::_destroy_tree_iter(typename tree<Data_t, less>::_Node **root)
+  {
+    // TODO: implement this iteratively
+    return 0;
+  }
+
+  template <typename Data_t, typename less>
+  size_t tree<Data_t, less>::_destroy_tree_rec(typename tree<Data_t, less>::_Node **root)
+  {
+    if (*root == nullptr)
+    {
+      return 0;
+    }
+    size_t amount = 1 + _destroy_tree_rec(&((*root)->__left)) + _destroy_tree_rec(&((*root)->__right));
+    delete *root;
+    *root = nullptr;
+    return amount;
+  }
+
+  template <typename Data_t, typename less>
+  ssize_t tree<Data_t, less>::_get_tree_height_iter(typename tree<Data_t, less>::_Node &node) const
+  {
+    // TODO: implement this iteratively
+    return 0;
+  }
+
+  template <typename Data_t, typename less>
+  ssize_t tree<Data_t, less>::_get_tree_height_rec(typename tree<Data_t, less>::_Node *node) const
+  {
+    if (!node)
+      return -1;
+    return 1 + std::max(_get_tree_height_rec(node->__left), _get_tree_height_rec(node->__right));
+  }
+
+  template <typename Data_t, typename less>
+  ssize_t tree<Data_t, less>::_get_tree_size_iter(_Node *node) const
+  {
+    // TODO: implement this iteratively
+    return 0;
+  }
+
+  template <typename Data_t, typename less>
+  ssize_t tree<Data_t, less>::_get_tree_size_rec(_Node *node) const
+  {
+    if (!node)
+      return 0;
+    return 1 + _get_tree_size_rec(node->__left) + _get_tree_size_rec(node->__right);
+  }
+
 }; // namespace avl
 
 #endif // __AVL_TREE_H__
