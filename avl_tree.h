@@ -135,6 +135,11 @@ namespace avl
     bool _remove_aux(const Data_t &data);
     void _clear_aux();
 
+    std::pair<_Node *, _Node **> _search_place_aux(const Data_t &data);
+    std::pair<const _Node *, const _Node *const *> _search_place_aux(const Data_t &data) const;
+    const _Node *_search_aux(const Data_t &data) const;
+    _Node *_search_aux(const Data_t &data);
+
     size_t _destroy_tree_iter(_Node **root);
     size_t _destroy_tree_rec(_Node **root);
     inline size_t _destroy_tree(_Node **root) { return _destroy_tree_rec(root); }
@@ -153,6 +158,8 @@ namespace avl
     ssize_t _get_tree_size(_Node *node) const { return _get_tree_size_rec(node); }
 
     inline void _swap_nodes(_Node **a, _Node **b);
+
+    inline _Node **_get_node_pptr(_Node *node_ptr);
 
 #ifdef AVL_TREE_TEST
   public:
