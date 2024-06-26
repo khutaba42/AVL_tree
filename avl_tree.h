@@ -216,6 +216,39 @@ namespace avl
   }
 
   template <typename Data_t, typename less>
+  tree<Data_t, less>::tree(std::initializer_list<Data_t> list)
+      : __root(nullptr),
+        __min_element(nullptr),
+        __max_element(nullptr),
+        __size(0)
+  {
+    // basic implementation, could be better
+    for (const &data : list)
+    {
+      if (_insert_aux(data) == false) // problem in inserting
+      {
+        this->_destroy_tree(&__root); // clear the tree
+        throw bad_input("inserting failed.");
+      }
+    }
+    __size = list.size();
+    __min_element = _find_min();
+    __max_element = _find_max();
+  }
+
+  template <typename Data_t, typename less>
+  tree<Data_t, less>::~tree()
+  {
+    _clear_aux();
+  }
+
+  template <typename Data_t, typename less>
+  void tree<Data_t, less>::clear()
+  {
+    _clear_aux();
+  }
+
+  template <typename Data_t, typename less>
   size_t tree<Data_t, less>::size() const
   {
     return __size;
@@ -236,6 +269,175 @@ namespace avl
     }
 #endif
     return __root == nullptr;
+  }
+
+  template <typename Data_t, typename less>
+  inline ssize_t tree<Data_t, less>::height() const
+  {
+    return __root ? _get_tree_height_from_children(*__root) : -1;
+  }
+
+  template <typename Data_t, typename less>
+  const Data_t &tree<Data_t, less>::search(const Data_t &data) const
+  {
+    return _search_aux(data);
+  }
+
+  template <typename Data_t, typename less>
+  Data_t &tree<Data_t, less>::search(const Data_t &data)
+  {
+    return _search_aux(data);
+  }
+
+  template <typename Data_t, typename less>
+  void tree<Data_t, less>::insert(const Data_t &data)
+  {
+    if (_insert_aux(data)) // insert successful
+    {
+      __size++;
+      __min_element = _find_min();
+      __max_element = _find_max();
+    }
+    else
+    {
+      throw data_already_exists();
+    }
+  }
+
+  template <typename Data_t, typename less>
+  void tree<Data_t, less>::remove(const Data_t &data)
+  {
+    if (_remove_aux(data)) // deletion successful
+    {
+      __size--;
+      if (this->empty())
+      {
+        __min_element = nullptr;
+        __max_element = nullptr;
+      }
+      else
+      {
+        __min_element = _find_min();
+        __max_element = _find_max();
+      }
+    }
+    else
+    {
+      throw data_not_found();
+    }
+  }
+
+  // * helper methods
+
+  // -*- general tree helper methods -*- //
+
+  template <typename Data_t, typename less>
+  bool tree<Data_t, less>::_insert_aux(const Data_t &data)
+  {
+    std::pair<_Node *, _Node **> parent_data_pair = _search_place_aux(data);
+    _Node *parent_ptr = parent_data_pair.first;
+    _Node **data_pptr = parent_data_pair.second;
+
+    assert(data_pptr != nullptr);
+    if (*data_pptr)
+    {
+      return false;
+    }
+
+    /* AVL tree specific implementation */
+
+    /* adding node logic */
+    *data_pptr = new _Node(data);
+    (*data_pptr)->__parent = parent_ptr;
+
+    _balance_to_root(data_pptr);
+
+    return true;
+  }
+
+  template <typename Data_t, typename less>
+  bool tree<Data_t, less>::_remove_aux(const Data_t &data)
+  {
+
+    std::pair<_Node *, _Node **> parent_data_pair = _search_place_aux(data);
+    _Node *parent_ptr = parent_data_pair.first;
+    _Node **data_pptr = parent_data_pair.second;
+
+    assert(data_pptr != nullptr);
+    if (*data_pptr == nullptr)
+    {
+      /* nothing to remove */
+      return false;
+    }
+
+    /* removing node logic */
+    /* AVL tree specific implementation */
+
+    _Node **node_pptr = data_pptr;
+    bool left_exists = (*data_pptr)->__left != nullptr;
+    bool right_exists = (*data_pptr)->__right != nullptr;
+
+    if (left_exists && right_exists) /* both children */
+    {
+      parent_ptr = (*node_pptr);
+      node_pptr = &((*data_pptr)->__right);
+
+      while ((*node_pptr)->__left)
+      {
+        parent_ptr = (*node_pptr);
+        node_pptr = &((*node_pptr)->__left);
+      }
+
+      _swap_nodes(node_pptr, data_pptr);
+
+      _Node *to_delete = *node_pptr;
+
+      *node_pptr = (*node_pptr)->__right;
+      if (*node_pptr)
+      {
+        // update the parent of the child of the node to delete
+        (*node_pptr)->__parent = (*node_pptr)->__parent->__parent;
+      }
+
+      node_pptr = _get_node_pptr(parent_ptr);
+
+      delete to_delete;
+    }
+    else
+    {
+      _Node *to_delete = *node_pptr;
+
+      if (left_exists) /* only the left child */
+      {
+        *node_pptr = (*node_pptr)->__left;
+      }
+      else /* no children - or - only the right child */
+      {
+        *node_pptr = (*node_pptr)->__right;
+      }
+
+      if (*node_pptr)
+      {
+        (*node_pptr)->__parent = parent_ptr;
+      }
+
+      node_pptr = _get_node_pptr(parent_ptr);
+
+      delete to_delete;
+    }
+
+    _balance_to_root(node_pptr);
+
+    return true;
+  }
+
+  template <typename Data_t, typename less>
+  void tree<Data_t, less>::_clear_aux()
+  {
+    __size -= _destroy_tree(&__root);
+#ifdef AVL_TREE_TEST
+    assert(__size == 0);
+#endif
   }
 
   template <typename Data_t, typename less>
@@ -370,6 +572,179 @@ namespace avl
     return 1 + _get_tree_size_rec(node->__left) + _get_tree_size_rec(node->__right);
   }
 
+  template <typename Data_t, typename less>
+  void tree<Data_t, less>::_swap_nodes(typename tree<Data_t, less>::_Node **a, typename tree<Data_t, less>::_Node **b)
+  {
+    if (a && *a && b && *b)
+    {
+      swap((*a)->__data, (*b)->__data);
+    }
+  }
+
+  template <typename Data_t, typename less>
+  typename tree<Data_t, less>::_Node **tree<Data_t, less>::_get_node_pptr(typename tree<Data_t, less>::_Node *node_ptr)
+  {
+    _Node **pptr = nullptr;
+    if (node_ptr)
+    {
+      if (node_ptr->__parent)
+      {
+        if (node_ptr->__parent->__left == node_ptr)
+        {
+          pptr = &(node_ptr->__parent->__left);
+        }
+        else // (node_ptr->__parent->__right == node_ptr)
+        {
+          pptr = &(node_ptr->__parent->__right);
+        }
+      }
+      else // root
+      {
+        pptr = &__root;
+      }
+    }
+    return pptr;
+  }
+
+#ifdef AVL_TREE_TEST
+
+  template <typename Data_t, typename less>
+  void tree<Data_t, less>::_print_tree() const
+  {
+    std::cout << "printing tree:" << std::endl;
+    std::cout << "size = " << size() << std::endl;
+    std::cout << "height = " << ((__root) ? (_get_tree_height(*__root)) : (-1)) << std::endl;
+    _print_tree_aux(__root, 0);
+  }
+
+  template <typename Data_t, typename less>
+  void tree<Data_t, less>::_print_tree_aux(typename tree<Data_t, less>::_Node *root, size_t indentation) const
+  {
+    if (root)
+    {
+      const std::string displace(7, ' ');
+      _print_tree_aux(root->__right, indentation + 1);
+
+      std::cout << std::endl;
+      for (size_t i = 0; i < indentation; i++)
+      {
+        std::cout << displace;
+      }
+      std::cout << "*-" << root->__height << "-[ " << root->__data << " ]";
+      std::cout << std::endl;
+
+      _print_tree_aux(root->__left, indentation + 1);
+    }
+    return;
+  }
+
+#endif // AVL_TREE_TEST
+
+  template <typename Data_t, typename less>
+  size_t tree<Data_t, less>::_get_tree_height_from_children(_Node &node) const
+  {
+    return std::max(
+        (node.__left) ? (1 + node.__left->__height) : (0),
+        (node.__right) ? (1 + node.__right->__height) : (0));
+  }
+
+  template <typename Data_t, typename less>
+  typename tree<Data_t, less>::_Node *tree<Data_t, less>::_find_min() const
+  {
+    _Node *temp = __root;
+    if (temp == nullptr)
+      throw data_not_found();
+    while (temp->__left != nullptr)
+    {
+      temp = temp->__left;
+    }
+    return temp;
+  }
+
+  template <typename Data_t, typename less>
+  typename tree<Data_t, less>::_Node *tree<Data_t, less>::_find_max() const
+  {
+    _Node *temp = __root;
+    if (temp == nullptr)
+      throw data_not_found();
+    while (temp->__right != nullptr)
+    {
+      temp = temp->__right;
+    }
+    return temp;
+  }
+
+  template <typename Data_t, typename less>
+  ssize_t tree<Data_t, less>::_get_balance_factor(typename tree<Data_t, less>::_Node *node) const
+  {
+    if (node == nullptr)
+    {
+      return -1;
+    }
+    return ((node->__left) ? (node->__left->__height) : (-1)) - ((node->__right) ? (node->__right->__height) : (-1));
+  }
+
+  template <typename Data_t, typename less>
+  void tree<Data_t, less>::_balance_to_root(typename tree<Data_t, less>::_Node **node_pptr)
+  {
+    if (node_pptr == nullptr || *node_pptr == nullptr)
+    {
+      return;
+    }
+
+    _Node *temp = *node_pptr;
+    while (temp)
+    {
+      // update the node values traversing up the tree
+      temp->__height = _get_tree_height_from_children(*temp);
+
+      // rotate if needed
+      int curr_bf = _get_balance_factor(temp);
+      int left_bf = _get_balance_factor(temp->__left);
+      int right_bf = _get_balance_factor(temp->__right);
+      if (curr_bf >= 2 && left_bf >= 0) // LL
+      {
+        _rotate_LL(node_pptr);
+      }
+      else if (curr_bf >= 2 && left_bf == -1) // LR
+      {
+        _rotate_LR(node_pptr);
+      }
+      else if (curr_bf <= -2 && right_bf == 1) // RL
+      {
+        _rotate_RL(node_pptr);
+      }
+      else if (curr_bf <= -2 && right_bf <= 0) // RR
+      {
+        _rotate_RR(node_pptr);
+      }
+      /**
+       * these were problematic lines, we changed it with this
+       * node_pptr = &(temp->__parent);
+       * temp = temp->__parent;
+       * so they had to be changed to this
+       */
+      temp = temp->__parent;
+      if (temp)
+      {
+        if (temp->__parent == nullptr) // temp is root
+        {
+          node_pptr = &(__root);
+        }
+        else
+        {
+          if (temp == temp->__parent->__left)
+          {
+            node_pptr = &(temp->__parent->__left);
+          }
+          else // temp == temp->__parent->__right
+          {
+            node_pptr = &(temp->__parent->__right);
+          }
+        }
+      }
+    }
+  }
 
   /*
    *
@@ -546,6 +921,140 @@ namespace avl
 
     return;
   }
+
+#ifdef AVL_TREE_TEST
+
+  template <typename Data_t, typename less>
+  bool tree<Data_t, less>::_validate() const
+  {
+    assert(__size == _get_tree_size(__root));
+    _validate_min_element();
+    _validate_max_element();
+
+    _validate_data_order();
+
+    _validate_aux(__root);
+    return true;
+  }
+
+  template <typename Data_t, typename less>
+  void tree<Data_t, less>::_validate_aux(typename tree<Data_t, less>::_Node *root) const
+  {
+    if (root == nullptr)
+      return;
+
+    // assert that the balance factor is correct is correct
+    ssize_t bf = _get_balance_factor(root);
+    assert(bf >= -1);
+    assert(bf <= 1);
+
+    assert(root->__height == _get_tree_height(*root));
+
+    // if it has a right child
+    if (root->__right)
+    {
+      // assert the parent of the right child is correct
+      assert(root == root->__right->__parent);
+      assert(less()(root->__data, root->__right->__data));
+
+      _validate_aux(root->__right);
+    }
+
+    // if it has a left child
+    if (root->__left)
+    {
+      // assert the parent of the left child is correct
+      assert(root == root->__left->__parent);
+      assert(less()(root->__left->__data, root->__data));
+
+      _validate_aux(root->__left);
+    }
+  }
+
+  template <typename Data_t, typename less>
+  void tree<Data_t, less>::_validate_min_element() const
+  {
+    _validate_min_element_aux(__root);
+  }
+
+  template <typename Data_t, typename less>
+  typename tree<Data_t, less>::_Node *tree<Data_t, less>::_validate_min_element_aux(typename tree<Data_t, less>::_Node *node) const
+  {
+    const _Node *min = node;
+    if (node)
+    {
+      // check the left sub tree
+      const _Node *left = _validate_min_element_aux(node->__left);
+
+      // check the right sub tree
+      const _Node *right = _validate_min_element_aux(node->__right);
+
+      // check the node
+    }
+    return nullptr;
+  }
+
+  template <typename Data_t, typename less>
+  void tree<Data_t, less>::_validate_max_element() const
+  {
+    _validate_max_element_aux(__root);
+  }
+
+  template <typename Data_t, typename less>
+  typename tree<Data_t, less>::_Node *tree<Data_t, less>::_validate_max_element_aux(typename tree<Data_t, less>::_Node *node) const
+  {
+    if (node)
+    {
+      // check the left sub tree
+      _validate_max_element_aux(node->__left);
+
+      // check the right sub tree
+      _validate_max_element_aux(node->__right);
+
+      // check the node
+      if (node->__left)
+      {
+        assert(less()(node->__left->__data, node->__data));
+      }
+      if (node->__right)
+      {
+        assert(less()(node->__data, node->__right->__data));
+      }
+    }
+    return nullptr;
+  }
+
+  template <typename Data_t, typename less>
+  void tree<Data_t, less>::_validate_data_order() const
+  {
+    _validate_data_order_aux(__root);
+  }
+
+  template <typename Data_t, typename less>
+  void tree<Data_t, less>::_validate_data_order_aux(typename tree<Data_t, less>::_Node *node) const
+  {
+    if (node)
+    {
+      // check the left sub tree
+      _validate_data_order_aux(node->__left);
+
+      // check the right sub tree
+      _validate_data_order_aux(node->__right);
+
+      // check the node
+      if (node->__left)
+      {
+        assert(less()(node->__left->__data, node->__data));
+      }
+      if (node->__right)
+      {
+        assert(less()(node->__data, node->__right->__data));
+      }
+    }
+  }
+
+#endif // AVL_TREE_TEST
+
 }; // namespace avl
 
 #endif // __AVL_TREE_H__
