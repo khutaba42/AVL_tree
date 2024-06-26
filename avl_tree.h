@@ -223,7 +223,7 @@ namespace avl
         __size(0)
   {
     // basic implementation, could be better
-    for (const &data : list)
+    for (const Data_t &data : list)
     {
       if (_insert_aux(data) == false) // problem in inserting
       {
@@ -506,7 +506,7 @@ namespace avl
     _Node *ptr = *(_search_place_aux(data).second);
     if (ptr == nullptr)
     {
-      throw data_not_found;
+      throw data_not_found();
     }
     return ptr->__data;
   }
@@ -517,7 +517,7 @@ namespace avl
     _Node *ptr = *(_search_place_aux(data).second);
     if (ptr == nullptr)
     {
-      throw data_not_found;
+      throw data_not_found();
     }
     return ptr->__data;
   }
