@@ -104,7 +104,7 @@ namespace avl
 
     // returns a const reference to the data, throws data_not_found in case data not found
     inline const Data_t &search(const Data_t &data) const;
-    // returns a reference to the data, use with caution
+    // returns a reference to the data, use with caution, only implemented for flexibility
     inline Data_t &search(const Data_t &data);
 
     // inserts the data, throws data_already_exists in case data is already in
