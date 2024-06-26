@@ -75,7 +75,14 @@ namespace avl
   {
   public:
     data_already_exists() : _custom_exception("Data already exists") {}
-    data_already_exists(const std::string &msg) : _custom_exception("Data not found: " + msg) {}
+    data_already_exists(const std::string &msg) : _custom_exception("Data already exists: " + msg) {}
+  };
+
+  class bad_input : public _custom_exception
+  {
+  public:
+    bad_input() : _custom_exception("Invalid input") {}
+    bad_input(const std::string &msg) : _custom_exception("Invalid input: " + msg) {}
   };
 
   template <typename Data_t, typename less = less<Data_t>>
