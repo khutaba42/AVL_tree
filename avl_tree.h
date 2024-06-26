@@ -151,11 +151,6 @@ namespace avl
     size_t _destroy_tree_rec(_Node **root);
     inline size_t _destroy_tree(_Node **root) { return _destroy_tree_rec(root); }
 
-    std::pair<_Node *, _Node **> _search_place_aux(const Data_t &data);
-    const _Node *_search_aux(const Data_t &data) const;
-
-    _Node **_get_node_pptr(_Node *node_ptr);
-
     ssize_t _get_tree_height_iter(_Node &node) const;
     ssize_t _get_tree_height_rec(_Node *node) const;
     ssize_t _get_tree_height(_Node &node) const { return _get_tree_height_rec(&node); }
