@@ -91,6 +91,8 @@ namespace avl
   public:
     tree();
     tree(std::initializer_list<Data_t> list);
+    tree(tree &other);
+    tree(tree &&other);
     ~tree();
 
     // empty out the tree
@@ -111,6 +113,8 @@ namespace avl
     inline void insert(const Data_t &data);
     // removes the data, throws data_not_found in case data not found
     inline void remove(const Data_t &data);
+    // unites 2 trees into 1 in linear time
+    inline tree unite(tree &t1, tree &t2);
 
     class _Node
     {
@@ -127,6 +131,104 @@ namespace avl
 
       friend class tree; // so avl::tree can access the private members of avl::tree::_Node
     };
+
+    class iterator
+    {
+    public:
+      explicit iterator(_Node *root) : current(_left_most(root)) {}
+
+      const Data_t &operator*() const { return current->__data; }
+
+      iterator &operator++()
+      {
+        if (current->__right)
+        {
+          current = _left_most(current->__right);
+        }
+        else
+        {
+          _Node *p = current->__parent;
+          while (p && current == p->__right)
+          {
+            current = p;
+            p = p->__parent;
+          }
+          current = p;
+        }
+        return *this;
+      }
+
+      iterator operator++(int)
+      {
+        iterator it = *this;
+        ++(*this);
+        return it;
+      }
+
+      bool operator!=(const iterator &other) const { return current != other.current; }
+
+    private:
+      _Node *current;
+
+      _Node *_left_most(_Node *node) const
+      {
+        while (node && node->__left)
+          node = node->__left;
+        return node;
+      }
+    };
+
+    iterator begin() { return iterator(__root); }
+    iterator end() { return iterator(nullptr); }
+
+    class const_iterator
+    {
+    public:
+      explicit const_iterator(_Node *root) : current(_left_most(root)) {}
+
+      const Data_t &operator*() const { return current->__data; }
+
+      iterator &operator++()
+      {
+        if (current->__right)
+        {
+          current = _left_most(current->__right);
+        }
+        else
+        {
+          _Node *p = current->__parent;
+          while (p && current == p->__right)
+          {
+            current = p;
+            p = p->__parent;
+          }
+          current = p;
+        }
+        return *this;
+      }
+
+      iterator operator++(int)
+      {
+        iterator it = *this;
+        ++(*this);
+        return it;
+      }
+
+      bool operator!=(const const_iterator &other) const { return current != other.current; }
+
+    private:
+      _Node *current;
+
+      _Node *_left_most(_Node *node) const
+      {
+        while (node && node->__left)
+          node = node->__left;
+        return node;
+      }
+    };
+
+    const_iterator begin() const { return const_iterator(__root); }
+    const_iterator end() const { return const_iterator(nullptr); }
 
   private:
     _Node *__root;
@@ -150,6 +252,10 @@ namespace avl
     size_t _destroy_tree_iter(_Node **root);
     size_t _destroy_tree_rec(_Node **root);
     inline size_t _destroy_tree(_Node **root) { return _destroy_tree_rec(root); }
+
+    _Node *_copy_tree_iter(_Node *root);
+    _Node *_copy_tree_rec(_Node *root);
+    inline _Node *_copy_tree(_Node *root) { return _copy_tree_rec(root); }
 
     ssize_t _get_tree_height_iter(_Node &node) const;
     ssize_t _get_tree_height_rec(_Node *node) const;
@@ -234,6 +340,32 @@ namespace avl
     __size = list.size();
     __min_element = _find_min();
     __max_element = _find_max();
+  }
+
+  template <typename Data_t, typename less>
+  tree<Data_t, less>::tree(tree &other)
+  {
+    this->__root = _copy_tree(other->__root);
+
+    this->__size = other->__size;
+    this->__max_element = _find_max(this->__root);
+    this->__min_element = _find_min(this->__root);
+  }
+
+  template <typename Data_t, typename less>
+  tree<Data_t, less>::tree(tree &&other)
+  {
+    this->__root = other->__root;
+    other->__root = nullptr;
+
+    this->__size = other->__size;
+    other->__size = 0;
+
+    this->__max_element = other->__max_element;
+    other->__max_element = nullptr;
+    
+    this->__min_element = other->__min_element;  
+    other->__min_element = nullptr;
   }
 
   template <typename Data_t, typename less>
@@ -325,6 +457,12 @@ namespace avl
     {
       throw data_not_found();
     }
+  }
+
+  template <typename Data_t, typename less>
+  tree<Data_t, less> tree<Data_t, less>::unite(tree<Data_t, less> &t1, tree<Data_t, less> &t2)
+  {
+    tree avl;
   }
 
   // * helper methods
@@ -540,6 +678,40 @@ namespace avl
     delete *root;
     *root = nullptr;
     return amount;
+  }
+
+  template <typename Data_t, typename less>
+  typename tree<Data_t, less>::_Node *tree<Data_t, less>::_copy_tree_iter(typename tree<Data_t, less>::_Node *root)
+  {
+    // TODO: implement this iteratively
+    return nullptr;
+  }
+
+  template <typename Data_t, typename less>
+  typename tree<Data_t, less>::_Node *tree<Data_t, less>::_copy_tree_rec(typename tree<Data_t, less>::_Node *root)
+  {
+    if (root == nullptr)
+    {
+      return nullptr;
+    }
+
+    _Node *node = new _Node(root->__data);
+
+    node->__left = _copy_tree_rec(&((*root)->__left));
+    if (node->__left)
+    {
+      node->__left->__parent = root;
+    }
+
+    node->__right = _copy_tree_rec(&((*root)->__right));
+    if (node->__right)
+    {
+      node->__right->__parent = root;
+    }
+
+    node->__height = root->__height;
+
+    return node;
   }
 
   template <typename Data_t, typename less>
