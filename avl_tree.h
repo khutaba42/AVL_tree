@@ -88,6 +88,13 @@ namespace avl
   template <typename Data_t, typename less = less<Data_t>>
   class tree
   {
+  private:
+    class _Node;
+    _Node *__root;
+    _Node *__min_element;
+    _Node *__max_element;
+    size_t __size;
+
   public:
     tree();
     tree(std::initializer_list<Data_t> list);
@@ -116,126 +123,15 @@ namespace avl
     // unites 2 trees into 1 in linear time
     inline tree unite(tree &t1, tree &t2);
 
-    class _Node
-    {
-      Data_t __data;
-      int __height;
-      _Node *__parent, *__left, *__right;
-
-      _Node(const Data_t &data)
-          : __data(data),
-            __height(0),
-            __parent(nullptr),
-            __left(nullptr),
-            __right(nullptr) {}
-
-      friend class tree; // so avl::tree can access the private members of avl::tree::_Node
-    };
-
-    class iterator
-    {
-    public:
-      explicit iterator(_Node *root) : current(_left_most(root)) {}
-
-      const Data_t &operator*() const { return current->__data; }
-
-      iterator &operator++()
-      {
-        if (current->__right)
-        {
-          current = _left_most(current->__right);
-        }
-        else
-        {
-          _Node *p = current->__parent;
-          while (p && current == p->__right)
-          {
-            current = p;
-            p = p->__parent;
-          }
-          current = p;
-        }
-        return *this;
-      }
-
-      iterator operator++(int)
-      {
-        iterator it = *this;
-        ++(*this);
-        return it;
-      }
-
-      bool operator!=(const iterator &other) const { return current != other.current; }
-
-    private:
-      _Node *current;
-
-      _Node *_left_most(_Node *node) const
-      {
-        while (node && node->__left)
-          node = node->__left;
-        return node;
-      }
-    };
-
+    class iterator;
     iterator begin() { return iterator(__root); }
     iterator end() { return iterator(nullptr); }
 
-    class const_iterator
-    {
-    public:
-      explicit const_iterator(_Node *root) : current(_left_most(root)) {}
-
-      const Data_t &operator*() const { return current->__data; }
-
-      iterator &operator++()
-      {
-        if (current->__right)
-        {
-          current = _left_most(current->__right);
-        }
-        else
-        {
-          _Node *p = current->__parent;
-          while (p && current == p->__right)
-          {
-            current = p;
-            p = p->__parent;
-          }
-          current = p;
-        }
-        return *this;
-      }
-
-      iterator operator++(int)
-      {
-        iterator it = *this;
-        ++(*this);
-        return it;
-      }
-
-      bool operator!=(const const_iterator &other) const { return current != other.current; }
-
-    private:
-      _Node *current;
-
-      _Node *_left_most(_Node *node) const
-      {
-        while (node && node->__left)
-          node = node->__left;
-        return node;
-      }
-    };
-
+    class const_iterator;
     const_iterator begin() const { return const_iterator(__root); }
     const_iterator end() const { return const_iterator(nullptr); }
 
   private:
-    _Node *__root;
-    _Node *__min_element;
-    _Node *__max_element;
-    size_t __size;
-
     // * helper methods
 
     // -*- general tree helper methods -*- //
@@ -313,6 +209,117 @@ namespace avl
   };
 
   template <typename Data_t, typename less>
+  class avl::tree<Data_t, less>::_Node
+  {
+    Data_t __data;
+    int __height;
+    _Node *__parent, *__left, *__right;
+
+    _Node(const Data_t &data)
+        : __data(data),
+          __height(0),
+          __parent(nullptr),
+          __left(nullptr),
+          __right(nullptr) {}
+
+    friend class tree; // so avl::tree can access the private members of avl::tree::_Node
+  };
+
+  template <typename Data_t, typename less>
+  class avl::tree<Data_t, less>::iterator
+  {
+  public:
+    explicit iterator(_Node *root) : current(_left_most(root)) {}
+
+    const Data_t &operator*() const { return current->__data; }
+
+    iterator &operator++()
+    {
+      if (current->__right)
+      {
+        current = _left_most(current->__right);
+      }
+      else
+      {
+        _Node *p = current->__parent;
+        while (p && current == p->__right)
+        {
+          current = p;
+          p = p->__parent;
+        }
+        current = p;
+      }
+      return *this;
+    }
+
+    iterator operator++(int)
+    {
+      iterator it = *this;
+      ++(*this);
+      return it;
+    }
+
+    bool operator!=(const iterator &other) const { return current != other.current; }
+
+  private:
+    _Node *current;
+
+    _Node *_left_most(_Node *node) const
+    {
+      while (node && node->__left)
+        node = node->__left;
+      return node;
+    }
+  };
+
+  template <typename Data_t, typename less>
+  class avl::tree<Data_t, less>::const_iterator
+  {
+  public:
+    explicit const_iterator(_Node *root) : current(_left_most(root)) {}
+
+    const Data_t &operator*() const { return current->__data; }
+
+    iterator &operator++()
+    {
+      if (current->__right)
+      {
+        current = _left_most(current->__right);
+      }
+      else
+      {
+        _Node *p = current->__parent;
+        while (p && current == p->__right)
+        {
+          current = p;
+          p = p->__parent;
+        }
+        current = p;
+      }
+      return *this;
+    }
+
+    iterator operator++(int)
+    {
+      iterator it = *this;
+      ++(*this);
+      return it;
+    }
+
+    bool operator!=(const const_iterator &other) const { return current != other.current; }
+
+  private:
+    _Node *current;
+
+    _Node *_left_most(_Node *node) const
+    {
+      while (node && node->__left)
+        node = node->__left;
+      return node;
+    }
+  };
+
+  template <typename Data_t, typename less>
   tree<Data_t, less>::tree()
       : __root(nullptr),
         __min_element(nullptr),
@@ -363,8 +370,8 @@ namespace avl
 
     this->__max_element = other->__max_element;
     other->__max_element = nullptr;
-    
-    this->__min_element = other->__min_element;  
+
+    this->__min_element = other->__min_element;
     other->__min_element = nullptr;
   }
 
