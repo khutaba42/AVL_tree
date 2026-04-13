@@ -30,6 +30,7 @@
 #define RESET "\033[0m"   // Reset text color
 #endif                    // AVL_TREE_TEST
 
+#include <cmath>    // for std::log2, std::max
 #include <stdlib.h> // for size_t
 #include <utility>  // for std::forward, std::swap, std::move
 #include <cassert>  // for assert()
@@ -103,10 +104,10 @@ namespace avl
   public:
     tree();                                   // c'tor
     tree(std::initializer_list<Data_t> list); // list c'tor
-    tree(tree &other);                        // copy c'tor
+    tree(const tree &other);                   // copy c'tor
     tree(tree &&other);                       // move c'tor
     tree &operator=(const tree &other);       // copy assignment operator
-    tree &operator=(const tree &&other);      // move assignment operator
+    tree &operator=(tree &&other);             // move assignment operator
     ~tree();                                  // d'tor
 
     // empty out the tree
@@ -162,8 +163,8 @@ namespace avl
 
     std::pair<_Node *, _Node **> _search_place_aux(const Data_t &data);
     std::pair<const _Node *, const _Node *const *> _search_place_aux(const Data_t &data) const;
-    const _Node *_search_aux(const Data_t &data) const;
-    _Node *_search_aux(const Data_t &data);
+    const Data_t &_search_aux(const Data_t &data) const;
+    Data_t &_search_aux(const Data_t &data);
 
     size_t _destroy_tree_iter(_Node **root);
     size_t _destroy_tree_rec(_Node **root);
@@ -310,7 +311,7 @@ namespace avl
 
     inline const_iterator operator++(int)
     {
-      iterator it = *this;
+      const_iterator it = *this;
       ++(*this);
       return it;
     }
@@ -440,13 +441,19 @@ namespace avl
   }
 
   template <typename Data_t, typename less>
-  tree<Data_t, less>::tree(tree &other)
+  tree<Data_t, less>::tree(const tree &other)
+      : __root(nullptr),
+        __min_element(nullptr),
+        __max_element(nullptr),
+        __size(0)
   {
-    this->__root = _copy_tree(other->__root);
-
-    this->__size = other->__size;
-    this->__max_element = _find_max(this->__root);
-    this->__min_element = _find_min(this->__root);
+    if (other.__root)
+    {
+      this->__root = _copy_tree(other.__root);
+      this->__size = other.__size;
+      this->__max_element = _find_max();
+      this->__min_element = _find_min();
+    }
   }
 
   template <typename Data_t, typename less>
@@ -484,13 +491,13 @@ namespace avl
   }
 
   template <typename Data_t, typename less>
-  tree<Data_t, less> &tree<Data_t, less>::operator=(const tree<Data_t, less> &&other)
+  tree<Data_t, less> &tree<Data_t, less>::operator=(tree<Data_t, less> &&other)
   {
     if (this != &other)
     {
       if (this->__root)
       {
-        _destroy_tree(this->__root);
+        _destroy_tree(&this->__root);
       }
       this->__root = other.__root;
       this->__size = other.__size;
@@ -698,8 +705,10 @@ namespace avl
         else // *t1 == *t2
         {
           node_ptr[index] = *it1; // *it1 returns *Data_t
+          _Node *duplicate = *it2; // save before advancing
           ++it1;
           ++it2; // duplicates will be copied 1 time only
+          delete duplicate; // free the skipped node to avoid memory leak
         }
         ++index;
       }
@@ -917,9 +926,9 @@ namespace avl
   }
 
   template <typename Data_t, typename less>
-  const typename tree<Data_t, less>::_Node *tree<Data_t, less>::_search_aux(const Data_t &data) const
+  const Data_t &tree<Data_t, less>::_search_aux(const Data_t &data) const
   {
-    _Node *ptr = *(_search_place_aux(data).second);
+    const _Node *ptr = *(_search_place_aux(data).second);
     if (ptr == nullptr)
     {
       throw data_not_found();
@@ -928,7 +937,7 @@ namespace avl
   }
 
   template <typename Data_t, typename less>
-  typename tree<Data_t, less>::_Node *tree<Data_t, less>::_search_aux(const Data_t &data)
+  Data_t &tree<Data_t, less>::_search_aux(const Data_t &data)
   {
     _Node *ptr = *(_search_place_aux(data).second);
     if (ptr == nullptr)
@@ -975,16 +984,16 @@ namespace avl
 
     _Node *node = new _Node(root->__data);
 
-    node->__left = _copy_tree_rec(&((*root)->__left));
+    node->__left = _copy_tree_rec(root->__left);
     if (node->__left)
     {
-      node->__left->__parent = root;
+      node->__left->__parent = node;
     }
 
-    node->__right = _copy_tree_rec(&((*root)->__right));
+    node->__right = _copy_tree_rec(root->__right);
     if (node->__right)
     {
-      node->__right->__parent = root;
+      node->__right->__parent = node;
     }
 
     node->__height = root->__height;
@@ -1091,23 +1100,22 @@ namespace avl
       size_t right_size = size - left_size - 1;
 
       typename tree<Data_t, less>::_Node *node = new typename tree<Data_t, less>::_Node(*(data_ptr[left_size]));
-      size_t node_height = 0;
 
       node->__left = _create_almost_full_tree(data_ptr, left_size);
       if (node->__left)
       {
         node->__left->__parent = node;
-        node_height += node->__left->__height;
       }
 
       node->__right = _create_almost_full_tree(data_ptr + left_size + 1, right_size);
       if (node->__right)
       {
         node->__right->__parent = node;
-        node_height += node->__right->__height;
       }
 
-      node->__height = node_height;
+      ssize_t lh = node->__left ? (node->__left->__height + 1) : 0;
+      ssize_t rh = node->__right ? (node->__right->__height + 1) : 0;
+      node->__height = std::max(lh, rh);
 
       return node;
     }
@@ -1132,23 +1140,22 @@ namespace avl
       size_t right_size = size - left_size - 1;
 
       typename tree<Data_t, less>::_Node *node = node_ptr[left_size];
-      size_t node_height = 0;
 
       node->__left = _create_almost_full_tree_in_place(node_ptr, left_size);
       if (node->__left)
       {
         node->__left->__parent = node;
-        node_height += node->__left->__height;
       }
 
       node->__right = _create_almost_full_tree_in_place(node_ptr + left_size + 1, right_size);
       if (node->__right)
       {
         node->__right->__parent = node;
-        node_height += node->__right->__height;
       }
 
-      node->__height = node_height;
+      ssize_t lh = node->__left ? (node->__left->__height + 1) : 0;
+      ssize_t rh = node->__right ? (node->__right->__height + 1) : 0;
+      node->__height = std::max(lh, rh);
 
       return node;
     }
